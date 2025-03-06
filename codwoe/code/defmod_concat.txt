@@ -24,7 +24,7 @@ from torch.utils.tensorboard import SummaryWriter  # For logging metrics to Tens
 import tqdm  # For displaying progress bars during processing
 
 import data  # Custom module for handling datasets
-import models_concat  # Custom module for defining machine learning models
+import models  # Custom module for defining machine learning models
 
 # Logger setup for debugging and progress monitoring
 logger = logging.getLogger(pathlib.Path(__file__).name)  # Get logger for the script
@@ -215,7 +215,7 @@ def train(
     sample_batch = next(iter(data.get_dataloader(train_dataset)))
     embedding_dim = sum(sample_batch[f"{arch}_tensor"].shape[-1] for arch in source_arch)
 
-    model = models_concat.DefmodModel(
+    model = models.DefmodModel(
         dev_dataset.vocab, input_dim=embedding_dim, n_head=n_head, n_layers=n_layers, dropout=dropout
     )
     # JZ --end--
@@ -233,7 +233,7 @@ def train(
     )
     xent_criterion = nn.CrossEntropyLoss(ignore_index=model.padding_idx)
     if label_smoothing > 0.0:
-        smooth_criterion = models_concat.LabelSmoothingCrossEntropy(
+        smooth_criterion = models.LabelSmoothingCrossEntropy(
             ignore_index=model.padding_idx, epsilon=label_smoothing
         )
     else:
@@ -250,7 +250,7 @@ def train(
     # 4. train model
     epochs_range = tqdm.trange(epochs, desc="Epochs")
     total_steps = (len(train_dataloader) * epochs) // batch_accum
-    scheduler = models_concat.get_schedule(
+    scheduler = models.get_schedule(
         optimizer, round(total_steps * warmup_len), total_steps
     )
     for epoch in epochs_range:
@@ -377,7 +377,7 @@ def train(
 def pred(args):
     assert args.test_file is not None, "Missing dataset for test"
     # 1. retrieve vocab, dataset, model
-    model = models_concat.DefmodModel.load(args.save_dir / "model.pt")
+    model = models.DefmodModel.load(args.save_dir / "model.pt")
     train_vocab = data.JSONDataset.load(args.save_dir / "train_dataset.pt").vocab
     test_dataset = data.JSONDataset(
         args.test_file, vocab=train_vocab, freeze_vocab=True, maxlen=model.maxlen, spm_model_name=args.spm_model_path
